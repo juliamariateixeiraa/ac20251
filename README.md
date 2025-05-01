@@ -16,7 +16,7 @@ O projeto utiliza Java 17 e Lombok para simplificar a criação de métodos gett
 ## Estrutura
 
 Pacote principal:  
-`br.edu.cs.poo.ac.seguro.entidades`
+`br.edu.cs.poo.ac.seguro.errado`
 
 Classes implementadas:
 - PrecoAno

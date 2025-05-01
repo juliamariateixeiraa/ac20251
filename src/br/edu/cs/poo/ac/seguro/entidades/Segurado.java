@@ -7,7 +7,7 @@ import java.time.Period;
 public class Segurado {
     private String nome;
     private Endereco endereco;
-    protected LocalDate dataCriacao;
+    private LocalDate dataCriacao;
     private BigDecimal bonus;
 
     public Segurado(String nome, Endereco endereco, LocalDate dataCriacao, BigDecimal bonus) {
@@ -17,26 +17,50 @@ public class Segurado {
         this.bonus = bonus;
     }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public String getNome() {
+        return nome;
+    }
 
-    public Endereco getEndereco() { return endereco; }
-    public void setEndereco(Endereco endereco) { this.endereco = endereco; }
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
 
-    protected LocalDate getDataCriacao() { return dataCriacao; }
-    protected void setDataCriacao(LocalDate dataCriacao) { this.dataCriacao = dataCriacao; }
+    // Métodos públicos set e get para endereco
+    public Endereco getEndereco() {
+        return endereco;
+    }
 
-    public BigDecimal getBonus() { return bonus; }
+    public void setEndereco(Endereco endereco) {
+        this.endereco = endereco;
+    }
+
+    // Métodos protegidos set e get para dataCriacao
+    protected LocalDate getDataCriacao() {
+        return dataCriacao;
+    }
+
+    protected void setDataCriacao(LocalDate dataCriacao) {
+        this.dataCriacao = dataCriacao;
+    }
+
+    public BigDecimal getBonus() {
+        return bonus;
+    }
+
 
     public int getIdade() {
         return Period.between(dataCriacao, LocalDate.now()).getYears();
     }
 
     public void creditarBonus(BigDecimal valor) {
-        this.bonus = this.bonus.add(valor);
+        if (valor.compareTo(BigDecimal.ZERO) > 0) {
+            this.bonus = this.bonus.add(valor);
+        }
     }
 
     public void debitarBonus(BigDecimal valor) {
-        this.bonus = this.bonus.subtract(valor);
+        if (valor.compareTo(BigDecimal.ZERO) > 0 && this.bonus.compareTo(valor) >= 0) {
+            this.bonus = this.bonus.subtract(valor);
+        }
     }
 }
