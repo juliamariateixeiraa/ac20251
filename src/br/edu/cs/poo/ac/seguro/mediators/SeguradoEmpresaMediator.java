@@ -2,18 +2,74 @@ package br.edu.cs.poo.ac.seguro.mediator;
 
 import br.edu.cs.poo.ac.seguro.daos.SeguradoEmpresaDAO;
 import br.edu.cs.poo.ac.seguro.entidades.SeguradoEmpresa;
+import br.edu.cs.poo.ac.seguro.util.StringUtils; 
+import br.edu.cs.poo.ac.seguro.util.ValidadorCpfCnpj; 
 
 public class SeguradoEmpresaMediator {
 
     private SeguradoEmpresaDAO dao = new SeguradoEmpresaDAO();
 
-    public String incluir(SeguradoEmpresa segurado) {
+    // Implementando Singleton (opcional, mas recomendado pelo segundo código)
+    private static SeguradoEmpresaMediator instancia = new SeguradoEmpresaMediator();
+
+    private SeguradoEmpresaMediator() {}  // Construtor privado para o Singleton
+
+    public static SeguradoEmpresaMediator getInstancia() {
+        return instancia;
+    }
+
+    // Métodos de Validação (extraídos do segundo código para melhor organização)
+
+    private String validarCnpj(String cnpj) {
+        if (StringUtils.ehNuloOuBranco(cnpj)) {
+            return "CNPJ deve ser informado.";
+        }
+        if (cnpj.length() != 14) {
+            return "CNPJ deve ter 14 caracteres.";
+        }
+        if (!StringUtils.temSomenteNumeros(cnpj) || !ValidadorCpfCnpj.ehCnpjValido(cnpj)) {
+            return "CNPJ com dígito inválido.";
+        }
+        return null;
+    }
+
+    private String validarFaturamento(double faturamento) {
+        if (faturamento <= 0) {
+            return "Faturamento deve ser maior que zero.";
+        }
+        return null;
+    }
+
+    private String validarSeguradoEmpresa(SeguradoEmpresa segurado) {
         if (segurado == null) {
             return "Segurado não pode ser nulo.";
         }
-        if (segurado.getCnpj() == null || segurado.getCnpj().trim().isEmpty()) {
-            return "CNPJ inválido.";
+        if (StringUtils.ehNuloOuBranco(segurado.getNome())) {
+            return "Nome deve ser informado.";
         }
+        if (segurado.getEndereco() == null) {
+            return "Endereço deve ser informado.";
+        }
+        if (segurado.getDataAbertura() == null) {
+            return "Data de abertura deve ser informada.";
+        }
+
+        String cnpjMsg = validarCnpj(segurado.getCnpj());
+        if (cnpjMsg != null) {
+            return cnpjMsg;
+        }
+
+        return validarFaturamento(segurado.getFaturamento());
+    }
+
+    // Métodos CRUD (modificados para usar os métodos de validação)
+
+    public String incluir(SeguradoEmpresa segurado) {
+        String mensagemValidacao = validarSeguradoEmpresa(segurado);
+        if (mensagemValidacao != null) {
+            return mensagemValidacao;
+        }
+
         if (dao.buscar(segurado.getCnpj()) != null) {
             return "Já existe um segurado com este CNPJ.";
         }
@@ -23,9 +79,11 @@ public class SeguradoEmpresaMediator {
     }
 
     public String alterar(SeguradoEmpresa segurado) {
-        if (segurado == null || segurado.getCnpj() == null || segurado.getCnpj().trim().isEmpty()) {
-            return "Segurado ou CNPJ inválido.";
+        String mensagemValidacao = validarSeguradoEmpresa(segurado);
+        if (mensagemValidacao != null) {
+            return mensagemValidacao;
         }
+
         if (dao.buscar(segurado.getCnpj()) == null) {
             return "Segurado com este CNPJ não existe.";
         }
@@ -35,9 +93,11 @@ public class SeguradoEmpresaMediator {
     }
 
     public String excluir(String cnpj) {
-        if (cnpj == null || cnpj.trim().isEmpty()) {
-            return "CNPJ inválido.";
+        String mensagemValidacaoCnpj = validarCnpj(cnpj);
+        if (mensagemValidacaoCnpj != null) {
+            return mensagemValidacaoCnpj;
         }
+
         if (dao.buscar(cnpj) == null) {
             return "Segurado com este CNPJ não existe.";
         }
@@ -47,7 +107,7 @@ public class SeguradoEmpresaMediator {
     }
 
     public SeguradoEmpresa buscar(String cnpj) {
-        if (cnpj == null || cnpj.trim().isEmpty()) {
+        if (StringUtils.ehNuloOuBranco(cnpj)) {  // Use StringUtils para verificar nulo ou branco
             return null;
         }
         return dao.buscar(cnpj);
