@@ -6,14 +6,7 @@ import java.io.Serializable;
 
 public class ComparadoraObjetosSerial {
     
-    /**
-     * Compara dois objetos serializáveis convertendo-os em arrays de bytes
-     * e verificando se todos os bytes são idênticos.
-     * 
-     * @param s1 primeiro objeto
-     * @param s2 segundo objeto
-     * @return true se os dois objetos forem iguais na serialização, false caso contrário
-     */
+   
     public static boolean compareObjectsSerial(Serializable s1, Serializable s2) {
         try {
             ByteArrayOutputStream bos1 = new ByteArrayOutputStream();
