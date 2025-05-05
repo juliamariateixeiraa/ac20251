@@ -4,35 +4,32 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-public class ComparadoraObjetosSerial {
-    
-   
-    public static boolean compareObjectsSerial(Serializable s1, Serializable s2) {
+class ComparadoraObjetosSerial {
+    static boolean compareObjectsSerial(Serializable s1, Serializable s2) {
+        ByteArrayOutputStream  bos1 = null;
+        ByteArrayOutputStream  bos2 = null;
+        ObjectOutputStream oos1 = null;
+        ObjectOutputStream oos2 = null;
+        boolean ret = true;
         try {
-            ByteArrayOutputStream bos1 = new ByteArrayOutputStream();
-            ObjectOutputStream oos1 = new ObjectOutputStream(bos1);
+            bos1 = new ByteArrayOutputStream();
+            bos2 = new ByteArrayOutputStream();
+            oos1 = new ObjectOutputStream(bos1);
+            oos2 = new ObjectOutputStream(bos2);
             oos1.writeObject(s1);
-
-            ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
-            ObjectOutputStream oos2 = new ObjectOutputStream(bos2);
             oos2.writeObject(s2);
-
             byte[] b1 = bos1.toByteArray();
             byte[] b2 = bos2.toByteArray();
-
-            if (b1.length != b2.length) {
-                return false;
-            }
-
-            for (int i = 0; i < b1.length; i++) {
-                if (b1[i] != b2[i]) {
-                    return false;
+            for (int i=0; i<b1.length; i++) {
+                if (b2[i] != b1[i]) {
+                    ret = false;
+                    break;
                 }
+                i++;
             }
-            return true;
         } catch (Exception e) {
-            throw new RuntimeException("Erro na comparação de objetos serializados", e);
+            throw new RuntimeException(e);
         }
+        return ret;
     }
 }
-
