@@ -108,7 +108,7 @@ public class TesteSeguradoPessoaMediator extends TesteMediator {
 
 	@Test
 	public void testAlterarSeguradoPessoaInexistente() {
-		String cpf = "00000000000";
+		String cpf = "12345678909"; // CPF válido não usado
 		SeguradoPessoa seg = criarSeguradoPessoa(cpf);
 		assertEquals("CPF do segurado pessoa não existente", med.alterarSeguradoPessoa(seg));
 	}
@@ -135,4 +135,3 @@ public class TesteSeguradoPessoaMediator extends TesteMediator {
 		return new SeguradoPessoa("PAULA", criarEndereco(), LocalDate.now(), BigDecimal.ZERO, cpf, 1000.0);
 	}
 }
-
