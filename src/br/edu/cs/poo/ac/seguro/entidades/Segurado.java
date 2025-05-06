@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
 
-public class Segurado implements Serializable{
+public class Segurado implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -13,6 +13,16 @@ public class Segurado implements Serializable{
     private Endereco endereco;
     private LocalDate dataCriacao;
     private BigDecimal bonus;
+
+    public Segurado() {
+    }
+
+    public Segurado(String nome, Endereco endereco, LocalDate dataCriacao, BigDecimal bonus) {
+        this.nome = nome;
+        this.endereco = endereco;
+        this.dataCriacao = dataCriacao;
+        this.bonus = bonus;
+    }
 
     public String getNome() {
         return nome;
@@ -42,17 +52,9 @@ public class Segurado implements Serializable{
         return bonus;
     }
 
-    public Segurado(String nome, Endereco endereco, LocalDate dataCriacao, BigDecimal bonus) {
-        this.nome = nome;
-        this.endereco = endereco;
-        this.dataCriacao = dataCriacao;
-        this.bonus = bonus;
-    }
-
     public int getIdade() {
         LocalDate agora = LocalDate.now();
-        int idade = Period.between(getDataCriacao(), agora).getYears();
-        return idade;
+        return Period.between(getDataCriacao(), agora).getYears();
     }
 
     public void creditarBonus(BigDecimal valor) {

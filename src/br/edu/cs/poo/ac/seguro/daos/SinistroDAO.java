@@ -3,6 +3,10 @@ package br.edu.cs.poo.ac.seguro.daos;
 import br.edu.cesarschool.next.oo.persistenciaobjetos.CadastroObjetos;
 import br.edu.cs.poo.ac.seguro.entidades.Sinistro;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
 public class SinistroDAO extends DAOGenerico {
 
     public SinistroDAO() {
@@ -38,5 +42,16 @@ public class SinistroDAO extends DAOGenerico {
             cadastro.excluir(numero);
             return true;
         }
+    }
+
+    public List<Sinistro> buscarTodos() {
+        Serializable[] array = cadastro.buscarTodos();
+        List<Sinistro> lista = new ArrayList<>();
+        for (Serializable obj : array) {
+            if (obj instanceof Sinistro) {
+                lista.add((Sinistro) obj);
+            }
+        }
+        return lista;
     }
 }
