@@ -7,7 +7,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
-public class Apolice implements Serializable {
+public class Apolice implements Registro {
+
     private static final long serialVersionUID = 1L;
 
     private String numero;
@@ -36,5 +37,10 @@ public class Apolice implements Serializable {
         this.valorFranquia = valorFranquia;
         this.valorPremio = valorPremio;
         this.valorMaximoSegurado = valorMaximoSegurado;
+    }
+
+    @Override
+    public String getIdUnico() {
+        return numero;
     }
 }
