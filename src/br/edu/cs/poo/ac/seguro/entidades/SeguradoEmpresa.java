@@ -11,7 +11,8 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class SeguradoEmpresa extends Segurado implements Serializable {
+public class SeguradoEmpresa extends Segurado implements Registro {
+
     private static final long serialVersionUID = 1L;
 
     private String cnpj;
@@ -26,12 +27,21 @@ public class SeguradoEmpresa extends Segurado implements Serializable {
         this.ehLocadoraDeVeiculos = ehLocadoraDeVeiculos;
     }
 
-    // ✅ Adicionados para compatibilidade com o ApoliceMediator
     public LocalDate getDataAbertura() {
         return getDataCriacao();
     }
 
     public void setDataAbertura(LocalDate data) {
         setDataCriacao(data);
+    }
+
+    @Override
+    public boolean isEmpresa() {
+        return true;
+    }
+
+    @Override
+    public String getIdUnico() {
+        return cnpj;
     }
 }
