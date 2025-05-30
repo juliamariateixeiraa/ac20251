@@ -3,6 +3,7 @@ package br.edu.cs.poo.ac.seguro.mediators;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 import br.edu.cs.poo.ac.seguro.daos.ApoliceDAO;
@@ -96,36 +97,36 @@ public class ApoliceMediator {
 
         SeguradoPessoa pessoa = null;
         SeguradoEmpresa empresa = null;
+        Segurado proprietario;
 
         if (isCPF) {
             pessoa = daoSegPes.buscar(cpfOuCnpj);
             if (pessoa == null) {
                 return new RetornoInclusaoApolice(null, "CPF inexistente no cadastro de pessoas");
             }
+            proprietario = pessoa;
         } else {
             empresa = daoSegEmp.buscar(cpfOuCnpj);
             if (empresa == null) {
                 return new RetornoInclusaoApolice(null, "CNPJ inexistente no cadastro de empresas");
             }
+            proprietario = empresa;
         }
 
         Veiculo veiculo = daoVel.buscar(dados.getPlaca());
         LocalDate hoje = LocalDate.now();
-        String numeroApolice = isCPF
-                ? hoje.getYear() + "000" + cpfOuCnpj + dados.getPlaca()
-                : hoje.getYear() + cpfOuCnpj + dados.getPlaca();
+        String numeroApolice = (isCPF ? hoje.getYear() + "000" : hoje.getYear() + "") + cpfOuCnpj + dados.getPlaca();
 
         Apolice apoliceExistente = daoApo.buscar(numeroApolice);
         if (apoliceExistente != null) {
             return new RetornoInclusaoApolice(null, "Apólice já existente para ano atual e veículo");
         }
 
-        Veiculo novoVeiculo = new Veiculo(dados.getPlaca(), dados.getAno(), empresa, pessoa, categoria);
+        Veiculo novoVeiculo = new Veiculo(dados.getPlaca(), dados.getAno(), proprietario, categoria);
         if (veiculo == null) {
             daoVel.incluir(novoVeiculo);
         } else {
-            veiculo.setProprietarioPessoa(pessoa);
-            veiculo.setProprietarioEmpresa(empresa);
+            veiculo.setProprietario(proprietario);
             daoVel.alterar(veiculo);
             novoVeiculo = veiculo;
         }
@@ -147,7 +148,8 @@ public class ApoliceMediator {
         int anoAnterior = hoje.minusYears(1).getYear();
         boolean temSinistroAnoAnterior = false;
 
-        for (Sinistro sin : daoSin.buscarTodos()) {
+        List<Sinistro> sinistros = Arrays.asList(daoSin.buscarTodos());
+        for (Sinistro sin : sinistros) {
             Veiculo vSin = sin.getVeiculo();
             boolean mesmaPlaca = vSin != null && vSin.getPlaca().equalsIgnoreCase(novoVeiculo.getPlaca());
             boolean mesmoAno = sin.getDataHoraSinistro().getYear() == anoAnterior;
@@ -160,28 +162,12 @@ public class ApoliceMediator {
 
         if (!temSinistroAnoAnterior) {
             BigDecimal bonusAdicional = premio.multiply(new BigDecimal("0.3")).setScale(2, RoundingMode.HALF_UP);
-
             if (pessoa != null) {
-                SeguradoPessoa pessoaAtualizada = new SeguradoPessoa(
-                        pessoa.getNome(),
-                        pessoa.getEndereco(),
-                        pessoa.getDataNascimento(),
-                        pessoa.getBonus().add(bonusAdicional).setScale(2, RoundingMode.HALF_UP),
-                        pessoa.getCpf(),
-                        pessoa.getRenda()
-                );
-                daoSegPes.alterar(pessoaAtualizada);
+                pessoa.creditarBonus(bonusAdicional);
+                daoSegPes.alterar(pessoa);
             } else {
-                SeguradoEmpresa empresaAtualizada = new SeguradoEmpresa(
-                        empresa.getNome(),
-                        empresa.getEndereco(),
-                        empresa.getDataAbertura(),
-                        empresa.getBonus().add(bonusAdicional).setScale(2, RoundingMode.HALF_UP),
-                        empresa.getCnpj(),
-                        empresa.getFaturamento(),
-                        empresa.isEhLocadoraDeVeiculos()
-                );
-                daoSegEmp.alterar(empresaAtualizada);
+                empresa.creditarBonus(bonusAdicional);
+                daoSegEmp.alterar(empresa);
             }
         }
 
@@ -205,7 +191,7 @@ public class ApoliceMediator {
             return "Apólice inexistente";
         }
 
-        List<Sinistro> sinistros = daoSin.buscarTodos();
+        List<Sinistro> sinistros = Arrays.asList(daoSin.buscarTodos());
         int anoApolice = apolice.getDataInicioVigencia().getYear();
 
         for (Sinistro sin : sinistros) {
