@@ -1,42 +1,27 @@
 package br.edu.cs.poo.ac.seguro.daos;
 
-import br.edu.cesarschool.next.oo.persistenciaobjetos.CadastroObjetos;
 import br.edu.cs.poo.ac.seguro.entidades.SeguradoPessoa;
 
-public class SeguradoPessoaDAO extends DAOGenerico {
-    public SeguradoPessoaDAO() {
-        cadastro = new CadastroObjetos(SeguradoPessoa.class);
+public class SeguradoPessoaDAO extends SeguradoDAO {
+
+    @Override
+    protected Class<SeguradoPessoa> getClasseEntidade() {
+        return SeguradoPessoa.class;
     }
 
     public SeguradoPessoa buscar(String cpf) {
-        return (SeguradoPessoa) cadastro.buscar(cpf);
+        return (SeguradoPessoa) super.buscar(cpf);
     }
 
     public boolean incluir(SeguradoPessoa segurado) {
-        if (buscar(segurado.getCpf()) != null) {
-            return false;
-        } else {
-            cadastro.incluir(segurado, segurado.getCpf());
-            return true;
-        }
+        return super.incluir(segurado);
     }
 
     public boolean alterar(SeguradoPessoa segurado) {
-        if (buscar(segurado.getCpf()) == null) {
-            return false;
-        } else {
-            cadastro.alterar(segurado, segurado.getCpf());
-            return true;
-        }
+        return super.alterar(segurado);
     }
 
     public boolean excluir(String cpf) {
-        if (buscar(cpf) == null) {
-            return false;
-        } else {
-            cadastro.excluir(cpf);
-            return true;
-        }
+        return super.excluir(cpf);
     }
-
 }
