@@ -6,6 +6,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+
+import java.text.DecimalFormat;
+import java.text.ParseException;
+import javax.swing.text.MaskFormatter;
+import javax.swing.text.NumberFormatter;
+import java.text.NumberFormat; // ADICIONADO IMPORT
+
 import br.edu.cs.poo.ac.seguro.entidades.Endereco;
 import br.edu.cs.poo.ac.seguro.entidades.SeguradoEmpresa;
 import br.edu.cs.poo.ac.seguro.mediators.SeguradoEmpresaMediator;
@@ -17,14 +24,13 @@ public class TelaSeguradoEmpresaCRUD {
 
     private JTextField txtCnpj;
     private JTextField txtNome;
-    private JTextField txtFaturamento;
-    private JTextField txtDataAbertura;
+    private JFormattedTextField txtFaturamento;
+    private JFormattedTextField txtDataAbertura;
     private JCheckBox chkEhLocadora;
     private JTextField txtBonus;
 
-    // Endereco fields
     private JTextField txtLogradouro;
-    private JTextField txtCep;
+    private JFormattedTextField txtCep;
     private JTextField txtNumeroEndereco;
     private JTextField txtComplemento;
     private JTextField txtPais;
@@ -101,7 +107,14 @@ public class TelaSeguradoEmpresaCRUD {
         gbc.gridx = 0;
         gbc.gridy = 2;
         frmCrudSeguradoEmpresa.getContentPane().add(new JLabel("Data Abertura (dd/MM/yyyy):"), gbc);
-        txtDataAbertura = new JTextField();
+        try {
+            MaskFormatter dateMask = new MaskFormatter("##/##/####");
+            dateMask.setPlaceholderCharacter('_');
+            txtDataAbertura = new JFormattedTextField(dateMask);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            txtDataAbertura = new JFormattedTextField();
+        }
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         frmCrudSeguradoEmpresa.getContentPane().add(txtDataAbertura, gbc);
@@ -111,7 +124,15 @@ public class TelaSeguradoEmpresaCRUD {
         gbc.gridx = 0;
         gbc.gridy = 3;
         frmCrudSeguradoEmpresa.getContentPane().add(new JLabel("Faturamento:"), gbc);
-        txtFaturamento = new JTextField();
+        NumberFormat faturamentoFormat = DecimalFormat.getNumberInstance();
+        faturamentoFormat.setMinimumFractionDigits(2);
+        faturamentoFormat.setMaximumFractionDigits(2);
+        NumberFormatter faturamentoFormatter = new NumberFormatter(faturamentoFormat);
+        faturamentoFormatter.setValueClass(Double.class);
+        faturamentoFormatter.setAllowsInvalid(false);
+        faturamentoFormatter.setCommitsOnValidEdit(true);
+        txtFaturamento = new JFormattedTextField(faturamentoFormatter);
+        txtFaturamento.setValue(0.00);
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         frmCrudSeguradoEmpresa.getContentPane().add(txtFaturamento, gbc);
@@ -155,7 +176,15 @@ public class TelaSeguradoEmpresaCRUD {
 
         gbcEndereco.gridx = 0; gbcEndereco.gridy = 1; gbcEndereco.weightx = 0.0;
         panelEndereco.add(new JLabel("CEP:"), gbcEndereco);
-        txtCep = new JTextField();
+        try {
+            MaskFormatter cepMask = new MaskFormatter("########"); // Formato NNNNNNNN
+            // Ou, se preferir com traço: MaskFormatter cepMask = new MaskFormatter("#####-###");
+            cepMask.setPlaceholderCharacter('_');
+            txtCep = new JFormattedTextField(cepMask);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            txtCep = new JFormattedTextField();
+        }
         gbcEndereco.gridx = 1; gbcEndereco.weightx = 1.0;
         panelEndereco.add(txtCep, gbcEndereco);
 
@@ -200,7 +229,6 @@ public class TelaSeguradoEmpresaCRUD {
         gbc.weighty = 0.0;
         gbc.gridwidth = 1;
 
-        // Buttons Panel
         JPanel panelBotoesAcao = new JPanel(new FlowLayout(FlowLayout.CENTER));
         btnIncluirAlterar = new JButton("Incluir");
         panelBotoesAcao.add(btnIncluirAlterar);
@@ -266,12 +294,14 @@ public class TelaSeguradoEmpresaCRUD {
             txtCnpj.setText("");
         }
         txtNome.setText("");
-        txtFaturamento.setText("");
+        txtFaturamento.setValue(0.00);
+        txtDataAbertura.setValue(null);
         txtDataAbertura.setText("");
         chkEhLocadora.setSelected(false);
         txtBonus.setText("");
 
         txtLogradouro.setText("");
+        txtCep.setValue(null);
         txtCep.setText("");
         txtNumeroEndereco.setText("");
         txtComplemento.setText("");
@@ -283,7 +313,7 @@ public class TelaSeguradoEmpresaCRUD {
     private void populateFields(SeguradoEmpresa segurado) {
         txtNome.setText(segurado.getNome());
         txtDataAbertura.setText(segurado.getDataAbertura() != null ? segurado.getDataAbertura().format(dateFormatter) : "");
-        txtFaturamento.setText(String.valueOf(segurado.getFaturamento()));
+        txtFaturamento.setValue(segurado.getFaturamento());
         chkEhLocadora.setSelected(segurado.isEhLocadoraDeVeiculos());
         txtBonus.setText(segurado.getBonus() != null ? segurado.getBonus().setScale(2).toString() : "0.00");
 
@@ -304,23 +334,37 @@ public class TelaSeguradoEmpresaCRUD {
         String nome = txtNome.getText().trim();
 
         LocalDate dataAbertura = null;
-        if (!txtDataAbertura.getText().trim().isEmpty()) {
-            try {
-                dataAbertura = LocalDate.parse(txtDataAbertura.getText().trim(), dateFormatter);
-            } catch (DateTimeParseException e) {
-                JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Formato de Data de Abertura inválido. Use dd/MM/yyyy.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+        String dataAberturaStr = txtDataAbertura.getText().trim().replace("_","");
+        if (!dataAberturaStr.isEmpty()) {
+            if (dataAberturaStr.length() == 10 && dataAberturaStr.matches("\\d{2}/\\d{2}/\\d{4}")) { // Verifica se já está no formato com barras
+                try {
+                    dataAbertura = LocalDate.parse(dataAberturaStr, dateFormatter);
+                } catch (DateTimeParseException e) {
+                    JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Formato de Data de Abertura inválido. Use dd/MM/yyyy.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+            } else if (dataAberturaStr.length() == 8 && dataAberturaStr.matches("\\d{8}")) { // ddMMyyyy
+                String formattedDate = dataAberturaStr.substring(0,2) + "/" + dataAberturaStr.substring(2,4) + "/" + dataAberturaStr.substring(4,8);
+                try {
+                    dataAbertura = LocalDate.parse(formattedDate, dateFormatter);
+                } catch (DateTimeParseException e) {
+                    JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Formato de Data de Abertura inválido. Use dd/MM/yyyy.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+            } else {
+                JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Data de Abertura incompleta ou inválida.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
                 return null;
             }
         }
 
+
         double faturamento = 0.0;
-        if (!txtFaturamento.getText().trim().isEmpty()) {
-            try {
-                faturamento = Double.parseDouble(txtFaturamento.getText().trim());
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Faturamento deve ser um número válido.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
-                return null;
-            }
+        Object faturamentoObj = txtFaturamento.getValue();
+        if (faturamentoObj instanceof Number) {
+            faturamento = ((Number)faturamentoObj).doubleValue();
+        } else {
+            JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Faturamento deve ser um número válido.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+            return null;
         }
 
         boolean ehLocadora = chkEhLocadora.isSelected();
@@ -328,14 +372,14 @@ public class TelaSeguradoEmpresaCRUD {
         if(txtBonus.getText() != null && !txtBonus.getText().isEmpty()){
             try {
                 bonus = new BigDecimal(txtBonus.getText().trim());
-            } catch (NumberFormatException e) {
-                // Default to zero
-            }
+            } catch (NumberFormatException e) { /* Default to zero */ }
         }
+
+        String cepValue = txtCep.getText().replace("_", "").replace("-","");
 
         Endereco endereco = new Endereco(
                 txtLogradouro.getText().trim(),
-                txtCep.getText().trim(),
+                cepValue,
                 txtNumeroEndereco.getText().trim(),
                 txtComplemento.getText().trim(),
                 txtPais.getText().trim(),
@@ -356,33 +400,28 @@ public class TelaSeguradoEmpresaCRUD {
             if (existente != null) {
                 JOptionPane.showMessageDialog(frmCrudSeguradoEmpresa, "Segurado com este CNPJ já existe.", "Erro", JOptionPane.ERROR_MESSAGE);
             } else {
-                // ***** CORREÇÃO APLICADA AQUI *****
-                txtCnpj.setEnabled(false); // Desabilita o campo CNPJ PRIMEIRO
-
-                // Limpa os outros campos
+                txtCnpj.setEnabled(false);
                 txtNome.setText("");
-                txtFaturamento.setText("");
+                txtFaturamento.setValue(0.00);
+                txtDataAbertura.setValue(null);
                 txtDataAbertura.setText("");
                 chkEhLocadora.setSelected(false);
                 txtBonus.setText("0.00");
                 txtLogradouro.setText("");
+                txtCep.setValue(null);
                 txtCep.setText("");
                 txtNumeroEndereco.setText("");
                 txtComplemento.setText("");
                 txtPais.setText("");
                 txtEstado.setText("");
                 txtCidade.setText("");
-
-                setFormEnabled(true); // Habilita o restante do formulário
-
-                // Configura os botões para o modo de inclusão
+                setFormEnabled(true);
                 btnNovo.setEnabled(false);
                 btnBuscar.setEnabled(false);
                 btnIncluirAlterar.setEnabled(true);
                 btnIncluirAlterar.setText("Incluir");
                 btnExcluir.setEnabled(false);
                 btnCancelar.setEnabled(true);
-                // ***** FIM DA CORREÇÃO *****
             }
         });
 
@@ -456,11 +495,12 @@ public class TelaSeguradoEmpresaCRUD {
                 clearFields();
             } else {
                 txtNome.setText("");
-                txtFaturamento.setText("");
+                txtFaturamento.setValue(0.00);
+                txtDataAbertura.setValue(null);
                 txtDataAbertura.setText("");
                 chkEhLocadora.setSelected(false);
-                // txtBonus é display
                 txtLogradouro.setText("");
+                txtCep.setValue(null);
                 txtCep.setText("");
                 txtNumeroEndereco.setText("");
                 txtComplemento.setText("");

@@ -9,6 +9,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.text.DecimalFormat;
+import java.text.ParseException;
+import javax.swing.text.MaskFormatter;
+import javax.swing.text.NumberFormatter;
+import java.text.NumberFormat; // ADICIONADO IMPORT
 
 import br.edu.cs.poo.ac.seguro.entidades.TipoSinistro;
 import br.edu.cs.poo.ac.seguro.excecoes.ExcecaoValidacaoDados;
@@ -18,12 +23,12 @@ import br.edu.cs.poo.ac.seguro.mediators.SinistroMediator;
 public class TelaInclusaoSinistro {
 
     private JFrame frmInclusaoSinistro;
-    private SinistroMediator mediator = SinistroMediator.getInstancia(); // [cite: 14]
+    private SinistroMediator mediator = SinistroMediator.getInstancia();
 
     private JTextField txtPlaca;
-    private JTextField txtDataHoraSinistro; // Format: dd/MM/yyyy HH:mm
+    private JFormattedTextField txtDataHoraSinistro;
     private JTextField txtUsuarioRegistro;
-    private JTextField txtValorSinistro;
+    private JFormattedTextField txtValorSinistro;
     private JComboBox<String> cmbTipoSinistro;
 
     private JButton btnIncluir;
@@ -72,7 +77,14 @@ public class TelaInclusaoSinistro {
         gbc.gridy = 1;
         gbc.weightx = 0.0;
         frmInclusaoSinistro.getContentPane().add(new JLabel("Data/Hora Sinistro (dd/MM/yyyy HH:mm):"), gbc);
-        txtDataHoraSinistro = new JTextField();
+        try {
+            MaskFormatter dateMask = new MaskFormatter("##/##/#### ##:##");
+            dateMask.setPlaceholderCharacter('_');
+            txtDataHoraSinistro = new JFormattedTextField(dateMask);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            txtDataHoraSinistro = new JFormattedTextField(); // Fallback
+        }
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         frmInclusaoSinistro.getContentPane().add(txtDataHoraSinistro, gbc);
@@ -92,7 +104,15 @@ public class TelaInclusaoSinistro {
         gbc.gridy = 3;
         gbc.weightx = 0.0;
         frmInclusaoSinistro.getContentPane().add(new JLabel("Valor do Sinistro:"), gbc);
-        txtValorSinistro = new JTextField();
+        NumberFormat valorFormat = DecimalFormat.getNumberInstance();
+        valorFormat.setMinimumFractionDigits(2);
+        valorFormat.setMaximumFractionDigits(2);
+        NumberFormatter valorFormatter = new NumberFormatter(valorFormat);
+        valorFormatter.setValueClass(Double.class);
+        valorFormatter.setAllowsInvalid(false);
+        valorFormatter.setCommitsOnValidEdit(true);
+        txtValorSinistro = new JFormattedTextField(valorFormatter);
+        txtValorSinistro.setValue(0.00);
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         frmInclusaoSinistro.getContentPane().add(txtValorSinistro, gbc);
@@ -103,7 +123,7 @@ public class TelaInclusaoSinistro {
         gbc.weightx = 0.0;
         frmInclusaoSinistro.getContentPane().add(new JLabel("Tipo de Sinistro:"), gbc);
         cmbTipoSinistro = new JComboBox<>();
-        popularTiposSinistro(); // [cite: 16]
+        popularTiposSinistro();
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         frmInclusaoSinistro.getContentPane().add(cmbTipoSinistro, gbc);
@@ -111,9 +131,9 @@ public class TelaInclusaoSinistro {
 
         // Buttons Panel
         JPanel panelBotoes = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        btnIncluir = new JButton("Incluir"); // [cite: 17]
+        btnIncluir = new JButton("Incluir");
         panelBotoes.add(btnIncluir);
-        btnLimpar = new JButton("Limpar"); // [cite: 17]
+        btnLimpar = new JButton("Limpar");
         panelBotoes.add(btnLimpar);
 
         gbc.gridx = 0;
@@ -129,24 +149,24 @@ public class TelaInclusaoSinistro {
     private void popularTiposSinistro() {
         TipoSinistro[] todosTipos = TipoSinistro.values();
         tiposSinistroOrdenados = new ArrayList<>(Arrays.asList(todosTipos));
-        // Sort by name alphabetically
-        tiposSinistroOrdenados.sort(Comparator.comparing(TipoSinistro::getNome)); // [cite: 16]
+        tiposSinistroOrdenados.sort(Comparator.comparing(TipoSinistro::getNome));
 
         for (TipoSinistro tipo : tiposSinistroOrdenados) {
             cmbTipoSinistro.addItem(tipo.getNome());
         }
         if (!tiposSinistroOrdenados.isEmpty()) {
-            cmbTipoSinistro.setSelectedIndex(0); // [cite: 18]
+            cmbTipoSinistro.setSelectedIndex(0);
         }
     }
 
     private void clearFields() {
         txtPlaca.setText("");
+        txtDataHoraSinistro.setValue(null);
         txtDataHoraSinistro.setText("");
         txtUsuarioRegistro.setText("");
-        txtValorSinistro.setText("");
+        txtValorSinistro.setValue(0.00);
         if (cmbTipoSinistro.getItemCount() > 0) {
-            cmbTipoSinistro.setSelectedIndex(0); // [cite: 18]
+            cmbTipoSinistro.setSelectedIndex(0);
         }
     }
 
@@ -155,22 +175,31 @@ public class TelaInclusaoSinistro {
             String placa = txtPlaca.getText().trim();
             String dataHoraStr = txtDataHoraSinistro.getText().trim();
             String usuarioRegistro = txtUsuarioRegistro.getText().trim();
-            String valorStr = txtValorSinistro.getText().trim();
 
             LocalDateTime dataHoraSinistro;
             double valorSinistro;
             int codigoTipoSinistro = -1;
 
             try {
-                dataHoraSinistro = LocalDateTime.parse(dataHoraStr, dateTimeFormatter); // [cite: 15]
+                String cleanDataHoraStr = dataHoraStr.replace("_", "").trim();
+                if (!cleanDataHoraStr.matches("\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}")) {
+                    throw new DateTimeParseException("Formato incompleto ou inválido para data/hora.", cleanDataHoraStr, 0);
+                }
+                dataHoraSinistro = LocalDateTime.parse(cleanDataHoraStr, dateTimeFormatter);
             } catch (DateTimeParseException ex) {
                 JOptionPane.showMessageDialog(frmInclusaoSinistro, "Data/Hora do Sinistro inválida. Use dd/MM/yyyy HH:mm.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
             try {
-                valorSinistro = Double.parseDouble(valorStr); // [cite: 15]
-            } catch (NumberFormatException ex) {
+                Object valObj = txtValorSinistro.getValue();
+                if (valObj instanceof Number) {
+                    valorSinistro = ((Number) valObj).doubleValue();
+                } else {
+                    JOptionPane.showMessageDialog(frmInclusaoSinistro, "Valor do Sinistro deve ser um número válido.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            } catch (Exception ex) {
                 JOptionPane.showMessageDialog(frmInclusaoSinistro, "Valor do Sinistro deve ser um número válido.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -183,23 +212,22 @@ public class TelaInclusaoSinistro {
                 return;
             }
 
-            DadosSinistro dadosSinistro = new DadosSinistro(placa, dataHoraSinistro, usuarioRegistro, valorSinistro, codigoTipoSinistro);
+            DadosSinistro dadosSinistroObj = new DadosSinistro(placa, dataHoraSinistro, usuarioRegistro, valorSinistro, codigoTipoSinistro);
 
             try {
-                // Pass current DateTime for registration time as per SinistroMediator signature
-                String numeroSinistroGerado = mediator.incluirSinistro(dadosSinistro, LocalDateTime.now()); // [cite: 17]
+                String numeroSinistroGerado = mediator.incluirSinistro(dadosSinistroObj, LocalDateTime.now());
                 JOptionPane.showMessageDialog(frmInclusaoSinistro,
-                        "Sinistro incluído com sucesso! Anote o número do sinistro: " + numeroSinistroGerado, // [cite: 19, 20]
+                        "Sinistro incluído com sucesso! Anote o número do sinistro: " + numeroSinistroGerado,
                         "Sucesso", JOptionPane.INFORMATION_MESSAGE);
                 clearFields();
             } catch (ExcecaoValidacaoDados ex) {
                 JOptionPane.showMessageDialog(frmInclusaoSinistro,
-                        ex.getMessage(), // [cite: 21]
+                        ex.getMessage(),
                         "Erro na Inclusão", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        btnLimpar.addActionListener(e -> { // [cite: 17]
+        btnLimpar.addActionListener(e -> {
             clearFields();
         });
     }

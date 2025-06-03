@@ -2,12 +2,17 @@ package br.edu.cs.poo.ac.seguro.telas;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+
+import java.text.DecimalFormat;
+import java.text.ParseException;
+import javax.swing.text.MaskFormatter;
+import javax.swing.text.NumberFormatter;
+import java.text.NumberFormat; // ADICIONADO IMPORT
+
 import br.edu.cs.poo.ac.seguro.entidades.Endereco;
 import br.edu.cs.poo.ac.seguro.entidades.SeguradoPessoa;
 import br.edu.cs.poo.ac.seguro.mediators.SeguradoPessoaMediator;
@@ -19,13 +24,12 @@ public class TelaSeguradoPessoaCRUD {
 
     private JTextField txtCpf;
     private JTextField txtNome;
-    private JTextField txtRenda;
-    private JTextField txtDataNascimento;
+    private JFormattedTextField txtRenda;
+    private JFormattedTextField txtDataNascimento;
     private JTextField txtBonus;
 
-    // Endereco fields
     private JTextField txtLogradouro;
-    private JTextField txtCep;
+    private JFormattedTextField txtCep;
     private JTextField txtNumeroEndereco;
     private JTextField txtComplemento;
     private JTextField txtPais;
@@ -76,7 +80,7 @@ public class TelaSeguradoPessoaCRUD {
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         frmCrudSeguradoPessoa.getContentPane().add(txtCpf, gbc);
-        gbc.weightx = 0.0; // Reset weightx
+        gbc.weightx = 0.0;
 
         JPanel panelBusca = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         btnNovo = new JButton("Novo");
@@ -86,7 +90,7 @@ public class TelaSeguradoPessoaCRUD {
         gbc.gridx = 2;
         gbc.gridwidth = 1;
         frmCrudSeguradoPessoa.getContentPane().add(panelBusca, gbc);
-        gbc.gridwidth = 1; // Reset gridwidth
+        gbc.gridwidth = 1;
 
         // Nome
         gbc.gridx = 0;
@@ -102,7 +106,14 @@ public class TelaSeguradoPessoaCRUD {
         gbc.gridx = 0;
         gbc.gridy = 2;
         frmCrudSeguradoPessoa.getContentPane().add(new JLabel("Data Nasc. (dd/MM/yyyy):"), gbc);
-        txtDataNascimento = new JTextField();
+        try {
+            MaskFormatter dateMask = new MaskFormatter("##/##/####");
+            dateMask.setPlaceholderCharacter('_');
+            txtDataNascimento = new JFormattedTextField(dateMask);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            txtDataNascimento = new JFormattedTextField();
+        }
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         frmCrudSeguradoPessoa.getContentPane().add(txtDataNascimento, gbc);
@@ -112,7 +123,15 @@ public class TelaSeguradoPessoaCRUD {
         gbc.gridx = 0;
         gbc.gridy = 3;
         frmCrudSeguradoPessoa.getContentPane().add(new JLabel("Renda:"), gbc);
-        txtRenda = new JTextField();
+        NumberFormat rendaFormat = DecimalFormat.getNumberInstance();
+        rendaFormat.setMinimumFractionDigits(2);
+        rendaFormat.setMaximumFractionDigits(2);
+        NumberFormatter rendaFormatter = new NumberFormatter(rendaFormat);
+        rendaFormatter.setValueClass(Double.class);
+        rendaFormatter.setAllowsInvalid(false);
+        rendaFormatter.setCommitsOnValidEdit(true);
+        txtRenda = new JFormattedTextField(rendaFormatter);
+        txtRenda.setValue(0.00);
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         frmCrudSeguradoPessoa.getContentPane().add(txtRenda, gbc);
@@ -144,7 +163,15 @@ public class TelaSeguradoPessoaCRUD {
 
         gbcEndereco.gridx = 0; gbcEndereco.gridy = 1; gbcEndereco.weightx = 0.0;
         panelEndereco.add(new JLabel("CEP:"), gbcEndereco);
-        txtCep = new JTextField();
+        try {
+            MaskFormatter cepMask = new MaskFormatter("########"); // Formato NNNNNNNN
+            // Ou, se preferir com traço: MaskFormatter cepMask = new MaskFormatter("#####-###");
+            cepMask.setPlaceholderCharacter('_');
+            txtCep = new JFormattedTextField(cepMask);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            txtCep = new JFormattedTextField();
+        }
         gbcEndereco.gridx = 1; gbcEndereco.weightx = 1.0;
         panelEndereco.add(txtCep, gbcEndereco);
 
@@ -189,8 +216,6 @@ public class TelaSeguradoPessoaCRUD {
         gbc.weighty = 0.0;
         gbc.gridwidth = 1;
 
-
-        // Buttons Panel
         JPanel panelBotoesAcao = new JPanel(new FlowLayout(FlowLayout.CENTER));
         btnIncluirAlterar = new JButton("Incluir");
         panelBotoesAcao.add(btnIncluirAlterar);
@@ -250,15 +275,17 @@ public class TelaSeguradoPessoaCRUD {
     }
 
     private void clearFields() {
-        if (txtCpf.isEnabled()) { // Só limpa CPF se estiver habilitado (estado inicial ou após cancelar busca/novo)
+        if (txtCpf.isEnabled()) {
             txtCpf.setText("");
         }
         txtNome.setText("");
-        txtRenda.setText("");
+        txtRenda.setValue(0.00);
+        txtDataNascimento.setValue(null);
         txtDataNascimento.setText("");
-        txtBonus.setText(""); // Bonus é sempre display, mas limpar ao resetar é bom
+        txtBonus.setText("");
 
         txtLogradouro.setText("");
+        txtCep.setValue(null);
         txtCep.setText("");
         txtNumeroEndereco.setText("");
         txtComplemento.setText("");
@@ -270,7 +297,7 @@ public class TelaSeguradoPessoaCRUD {
     private void populateFields(SeguradoPessoa segurado) {
         txtNome.setText(segurado.getNome());
         txtDataNascimento.setText(segurado.getDataNascimento() != null ? segurado.getDataNascimento().format(dateFormatter) : "");
-        txtRenda.setText(String.valueOf(segurado.getRenda()));
+        txtRenda.setValue(segurado.getRenda());
         txtBonus.setText(segurado.getBonus() != null ? segurado.getBonus().setScale(2).toString() : "0.00");
 
         if (segurado.getEndereco() != null) {
@@ -286,41 +313,55 @@ public class TelaSeguradoPessoaCRUD {
     }
 
     private SeguradoPessoa getSeguradoFromFields() {
-        String cpf = txtCpf.getText().trim(); // CPF é lido do campo, que estará desabilitado mas com valor
+        String cpf = txtCpf.getText().trim();
         String nome = txtNome.getText().trim();
-
         LocalDate dataNascimento = null;
-        if (!txtDataNascimento.getText().trim().isEmpty()) {
-            try {
-                dataNascimento = LocalDate.parse(txtDataNascimento.getText().trim(), dateFormatter);
-            } catch (DateTimeParseException e) {
-                JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Formato de Data de Nascimento inválido. Use dd/MM/yyyy.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+        String dataNascStr = txtDataNascimento.getText().trim().replace("_", "");
+
+        if (!dataNascStr.isEmpty()) {
+            if (dataNascStr.length() == 10 && dataNascStr.matches("\\d{2}/\\d{2}/\\d{4}")) { // Verifica se já está no formato com barras
+                try {
+                    dataNascimento = LocalDate.parse(dataNascStr, dateFormatter);
+                } catch (DateTimeParseException e) {
+                    JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Formato de Data de Nascimento inválido. Use dd/MM/yyyy.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+            } else if (dataNascStr.length() == 8 && dataNascStr.matches("\\d{8}")) { // ddMMyyyy
+                String formattedDate = dataNascStr.substring(0,2) + "/" + dataNascStr.substring(2,4) + "/" + dataNascStr.substring(4,8);
+                try {
+                    dataNascimento = LocalDate.parse(formattedDate, dateFormatter);
+                } catch (DateTimeParseException e) {
+                    JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Formato de Data de Nascimento inválido. Use dd/MM/yyyy.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+            } else {
+                JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Data de Nascimento incompleta ou inválida.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
                 return null;
             }
         }
 
+
         double renda = 0.0;
-        if (!txtRenda.getText().trim().isEmpty()) {
-            try {
-                renda = Double.parseDouble(txtRenda.getText().trim());
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Renda deve ser um número válido.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
-                return null;
-            }
+        Object rendaObj = txtRenda.getValue();
+        if (rendaObj instanceof Number) {
+            renda = ((Number) rendaObj).doubleValue();
+        } else {
+            JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Renda deve ser um número válido.", "Erro de Formato", JOptionPane.ERROR_MESSAGE);
+            return null;
         }
 
         BigDecimal bonus = BigDecimal.ZERO;
         if (txtBonus.getText() != null && !txtBonus.getText().isEmpty()) {
             try {
                 bonus = new BigDecimal(txtBonus.getText().trim());
-            } catch (NumberFormatException e) {
-                // Usa zero se não for um número válido no campo de bônus (que é display only)
-            }
+            } catch (NumberFormatException e) { /* Usa zero */ }
         }
+
+        String cepValue = txtCep.getText().replace("_", "").replace("-","");
 
         Endereco endereco = new Endereco(
                 txtLogradouro.getText().trim(),
-                txtCep.getText().trim(),
+                cepValue,
                 txtNumeroEndereco.getText().trim(),
                 txtComplemento.getText().trim(),
                 txtPais.getText().trim(),
@@ -341,34 +382,27 @@ public class TelaSeguradoPessoaCRUD {
             if (existente != null) {
                 JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Segurado com este CPF já existe.", "Erro", JOptionPane.ERROR_MESSAGE);
             } else {
-                // ***** CORREÇÃO APLICADA AQUI *****
-                txtCpf.setEnabled(false); // Desabilita o campo CPF PRIMEIRO, mantendo o valor.
-
-                // Limpa apenas os outros campos (Nome, Renda, Endereço etc.)
-                // O campo txtCpf não será afetado por clearFields() por estar desabilitado,
-                // ou limpamos manualmente os demais como abaixo para maior clareza.
+                txtCpf.setEnabled(false);
                 txtNome.setText("");
-                txtRenda.setText("");
+                txtRenda.setValue(0.00);
+                txtDataNascimento.setValue(null);
                 txtDataNascimento.setText("");
-                txtBonus.setText("0.00"); // Define um valor padrão para bônus visual
+                txtBonus.setText("0.00");
                 txtLogradouro.setText("");
+                txtCep.setValue(null);
                 txtCep.setText("");
                 txtNumeroEndereco.setText("");
                 txtComplemento.setText("");
                 txtPais.setText("");
                 txtEstado.setText("");
                 txtCidade.setText("");
-
-                setFormEnabled(true); // Habilita o restante do formulário
-
-                // Configura os botões para o modo de inclusão
+                setFormEnabled(true);
                 btnNovo.setEnabled(false);
                 btnBuscar.setEnabled(false);
                 btnIncluirAlterar.setEnabled(true);
                 btnIncluirAlterar.setText("Incluir");
                 btnExcluir.setEnabled(false);
                 btnCancelar.setEnabled(true);
-                // ***** FIM DA CORREÇÃO *****
             }
         });
 
@@ -381,15 +415,14 @@ public class TelaSeguradoPessoaCRUD {
             SeguradoPessoa segurado = mediator.buscarSeguradoPessoa(cpf);
             if (segurado == null) {
                 JOptionPane.showMessageDialog(frmCrudSeguradoPessoa, "Segurado não encontrado.", "Informação", JOptionPane.INFORMATION_MESSAGE);
-                // Mantém o CPF digitado e limpa os outros campos se não encontrado
                 String cpfBuscado = txtCpf.getText();
                 clearFields();
-                txtCpf.setText(cpfBuscado); // Restaura o CPF que foi buscado
-                txtCpf.setEnabled(true); // Permite nova busca ou novo
+                txtCpf.setText(cpfBuscado);
+                txtCpf.setEnabled(true);
             } else {
                 populateFields(segurado);
                 setFormEnabled(true);
-                txtCpf.setEnabled(false); // CPF não pode ser alterado após busca bem-sucedida
+                txtCpf.setEnabled(false);
                 btnNovo.setEnabled(false);
                 btnBuscar.setEnabled(false);
                 btnIncluirAlterar.setEnabled(true);
@@ -419,7 +452,7 @@ public class TelaSeguradoPessoaCRUD {
         });
 
         btnExcluir.addActionListener(e -> {
-            String cpf = txtCpf.getText().trim(); // CPF está desabilitado, mas tem valor
+            String cpf = txtCpf.getText().trim();
             int confirm = JOptionPane.showConfirmDialog(frmCrudSeguradoPessoa,
                     "Tem certeza que deseja excluir este segurado?", "Confirmação de Exclusão",
                     JOptionPane.YES_NO_OPTION);
@@ -439,16 +472,15 @@ public class TelaSeguradoPessoaCRUD {
         });
 
         btnLimparCampos.addActionListener(e -> {
-            // Limpa todos os campos se o CPF estiver habilitado (estado inicial)
-            // ou apenas os campos de dados se o CPF estiver desabilitado (durante novo/alterar)
             if(txtCpf.isEnabled()) {
-                clearFields(); // Limpa tudo, incluindo CPF
-            } else { // CPF está desabilitado (modo novo/alterar), não limpa CPF
+                clearFields();
+            } else {
                 txtNome.setText("");
-                txtRenda.setText("");
+                txtRenda.setValue(0.00);
+                txtDataNascimento.setValue(null);
                 txtDataNascimento.setText("");
-                // txtBonus já é não editável e será preenchido ou default
                 txtLogradouro.setText("");
+                txtCep.setValue(null);
                 txtCep.setText("");
                 txtNumeroEndereco.setText("");
                 txtComplemento.setText("");
