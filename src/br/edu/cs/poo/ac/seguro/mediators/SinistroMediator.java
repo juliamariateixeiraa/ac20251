@@ -1,14 +1,14 @@
-// ✅ SinistroMediator.java — com método incluirSinistro completo e correção de Arrays.asList()
 package br.edu.cs.poo.ac.seguro.mediators;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
+import br.edu.cesarschool.next.oo.persistenciaobjetos.CadastroObjetos;
 import br.edu.cs.poo.ac.seguro.daos.ApoliceDAO;
 import br.edu.cs.poo.ac.seguro.daos.SinistroDAO;
 import br.edu.cs.poo.ac.seguro.daos.VeiculoDAO;
@@ -35,100 +35,171 @@ public class SinistroMediator {
 
 	public String incluirSinistro(DadosSinistro dados, LocalDateTime dataHoraAtual) throws ExcecaoValidacaoDados {
 		ExcecaoValidacaoDados excecao = new ExcecaoValidacaoDados();
+		List<String> mensagensErro = excecao.getMensagens();
 
+		// Validação: dados não pode ser null
 		if (dados == null) {
-			excecao.adicionarMensagem("Dados do sinistro devem ser informados.");
+			mensagensErro.add("Dados do sinistro devem ser informados");
 			throw excecao;
 		}
 
+		// Validação: data/hora do sinistro não pode ser null
 		if (dados.getDataHoraSinistro() == null) {
-			excecao.adicionarMensagem("Data e hora do sinistro devem ser informadas.");
-		} else if (dados.getDataHoraSinistro().isAfter(dataHoraAtual)) {
-			excecao.adicionarMensagem("Data do sinistro deve ser anterior à data atual.");
+			mensagensErro.add("Data/hora do sinistro deve ser informada");
 		}
 
-		if (dados.getPlaca() == null || dados.getPlaca().trim().isEmpty()) {
-			excecao.adicionarMensagem("Placa deve ser informada.");
+		// Validação: data/hora do sinistro deve ser menor que a data/hora atual
+		if (dados.getDataHoraSinistro() != null &&
+				(dados.getDataHoraSinistro().isAfter(dataHoraAtual) || dados.getDataHoraSinistro().isEqual(dataHoraAtual))) {
+			mensagensErro.add("Data/hora do sinistro deve ser menor que a data/hora atual");
 		}
 
-		Veiculo veiculo = daoVeiculo.buscar(dados.getPlaca());
-		if (veiculo == null) {
-			excecao.adicionarMensagem("Veículo informado não está cadastrado.");
+		// Validação: placa do veículo não pode ser null nem branco
+		if (StringUtils.ehNuloOuBranco(dados.getPlaca())) {
+			mensagensErro.add("Placa do Veiculo deve ser informada");
 		}
 
-		if (dados.getUsuarioRegistro() == null || dados.getUsuarioRegistro().trim().isEmpty()) {
-			excecao.adicionarMensagem("Usuário de registro deve ser informado.");
+		// Validação: placa, se informada, deve ser de um veículo cadastrado
+		Veiculo veiculo = null;
+		if (!StringUtils.ehNuloOuBranco(dados.getPlaca())) {
+			veiculo = daoVeiculo.buscar(dados.getPlaca());
+			if (veiculo == null) {
+				mensagensErro.add("Veiculo não cadastrado");
+			}
 		}
 
+		// Validação: usuário do registro não pode ser null nem branco
+		if (StringUtils.ehNuloOuBranco(dados.getUsuarioRegistro())) {
+			mensagensErro.add("Usuario do registro de sinistro deve ser informado");
+		}
+
+		// Validação: valor do sinistro deve ser maior que zero
 		if (dados.getValorSinistro() <= 0) {
-			excecao.adicionarMensagem("Valor do sinistro deve ser maior que zero.");
+			mensagensErro.add("Valor do sinistro deve ser maior que zero");
 		}
 
-		TipoSinistro tipo = TipoSinistro.getTipoSinistro(dados.getCodigoTipoSinistro());
-		if (tipo == null) {
-			excecao.adicionarMensagem("Código do tipo de sinistro inválido.");
+		// Validação: código do tipo de sinistro deve ser válido
+		TipoSinistro tipoSinistro = TipoSinistro.getTipoSinistro(dados.getCodigoTipoSinistro());
+		if (tipoSinistro == null) {
+			mensagensErro.add("Codigo do tipo de sinistro invalido");
 		}
 
-		// Busca apólice vigente para o veículo
-		List<Apolice> apolices = Arrays.asList(daoApolice.buscarTodos());
-		Apolice apoliceEncontrada = null;
-		for (Apolice ap : apolices) {
-			if (ap.getVeiculo().getPlaca().equalsIgnoreCase(dados.getPlaca())) {
-				LocalDateTime inicio = ap.getDataInicioVigencia().atStartOfDay();
-				LocalDateTime fim = inicio.plusYears(1);
-				if (!dados.getDataHoraSinistro().isBefore(inicio) && dados.getDataHoraSinistro().isBefore(fim)) {
-					apoliceEncontrada = ap;
-					break;
+		// Se houver erros até aqui, lançar exceção
+		if (!mensagensErro.isEmpty()) {
+			throw excecao;
+		}
+
+		// Buscar apólice vigente para o veículo
+		Apolice apoliceVigente = buscarApoliceVigente(veiculo, dados.getDataHoraSinistro());
+
+		if (apoliceVigente == null) {
+			mensagensErro.add("Nao existe apolice vigente para o veiculo");
+			throw excecao;
+		}
+
+		// Validação: valor do sinistro não pode ser maior que o valor máximo segurado
+		// Usar new BigDecimal(double) para manter compatibilidade com os testes
+		BigDecimal valorSinistro = new BigDecimal(dados.getValorSinistro());
+		if (valorSinistro.compareTo(apoliceVigente.getValorMaximoSegurado()) > 0) {
+			mensagensErro.add("Valor do sinistro nao pode ultrapassar o valor maximo segurado constante na apolice");
+			throw excecao;
+		}
+
+		// Gerar número do sinistro
+		String numeroApolice = apoliceVigente.getNumero();
+		int sequencial = calcularProximoSequencial(numeroApolice);
+
+		// Formatar sequencial com 3 dígitos
+		String sequencialFormatado = String.format("%03d", sequencial);
+		String numeroSinistro = "S" + numeroApolice + sequencialFormatado;
+
+		// Criar e incluir sinistro
+		Sinistro sinistro = new Sinistro(numeroSinistro, veiculo, dados.getDataHoraSinistro(),
+				dataHoraAtual, dados.getUsuarioRegistro(), valorSinistro, tipoSinistro);
+
+		// Setar número da apólice e sequencial
+		sinistro.setNumeroApolice(numeroApolice);
+		sinistro.setSequencial(sequencial);
+
+		boolean incluido = daoSinistro.incluir(sinistro);
+		if (!incluido) {
+			mensagensErro.add("Erro ao incluir sinistro no banco de dados");
+			throw excecao;
+		}
+
+		return numeroSinistro;
+	}
+
+	private Apolice buscarApoliceVigente(Veiculo veiculo, LocalDateTime dataHoraSinistro) {
+		if (veiculo == null || dataHoraSinistro == null) {
+			return null;
+		}
+
+		// Buscar todas as apólices
+		CadastroObjetos cadastroApolices = new CadastroObjetos(Apolice.class);
+		Serializable[] todasApolices = cadastroApolices.buscarTodos();
+
+		if (todasApolices == null) {
+			return null;
+		}
+
+		for (Serializable obj : todasApolices) {
+			if (obj instanceof Apolice) {
+				Apolice ap = (Apolice) obj;
+
+				// Verificar se a apólice é para o veículo em questão
+				if (ap.getVeiculo() != null && veiculosIguais(ap.getVeiculo(), veiculo)) {
+					// Verificar se a apólice está vigente na data do sinistro
+					LocalDateTime inicioVigencia = ap.getDataInicioVigencia().atStartOfDay();
+					LocalDateTime fimVigencia = inicioVigencia.plusYears(1);
+
+					if (!dataHoraSinistro.isBefore(inicioVigencia) && dataHoraSinistro.isBefore(fimVigencia)) {
+						return ap;
+					}
 				}
 			}
 		}
 
-		if (apoliceEncontrada == null) {
-			excecao.adicionarMensagem("Não existe apólice vigente para o veículo informado.");
-		} else {
-			if (BigDecimal.valueOf(dados.getValorSinistro()).compareTo(apoliceEncontrada.getValorMaximoSegurado()) > 0) {
-				excecao.adicionarMensagem("Valor do sinistro excede valor máximo segurado pela apólice.");
+		return null;
+	}
+
+	private boolean veiculosIguais(Veiculo v1, Veiculo v2) {
+		if (v1 == null || v2 == null) {
+			return false;
+		}
+		return v1.getPlaca() != null && v1.getPlaca().equals(v2.getPlaca());
+	}
+
+	private int calcularProximoSequencial(String numeroApolice) {
+		Sinistro[] todosSinistros = daoSinistro.buscarTodos();
+		List<Sinistro> sinistrosApolice = new ArrayList<>();
+
+		if (todosSinistros != null) {
+			for (Sinistro s : todosSinistros) {
+				if (s != null && s.getNumero() != null &&
+						s.getNumero().startsWith("S" + numeroApolice)) {
+					sinistrosApolice.add(s);
+				}
 			}
 		}
 
-		if (excecao.possuiErros()) {
-			throw excecao;
+		// Se não existem sinistros para esta apólice, começar com 1
+		if (sinistrosApolice.isEmpty()) {
+			return 1;
 		}
 
-		// Gerar número e sequencial
-		List<Sinistro> sinistros = Arrays.asList(daoSinistro.buscarTodos());
-		List<Sinistro> relacionados = new ArrayList<>();
-		for (Sinistro s : sinistros) {
-			if (s.getNumeroApolice().equals(apoliceEncontrada.getNumero())) {
-				relacionados.add(s);
-			}
+		// Ordenar sinistros por sequencial
+		Collections.sort(sinistrosApolice, new ComparadorSinistroSequencial());
+
+		// Pegar o último (maior sequencial)
+		Sinistro ultimoSinistro = sinistrosApolice.get(sinistrosApolice.size() - 1);
+		String numeroUltimo = ultimoSinistro.getNumero();
+		String sequencialStr = numeroUltimo.substring(numeroUltimo.length() - 3);
+
+		try {
+			return Integer.parseInt(sequencialStr) + 1;
+		} catch (NumberFormatException e) {
+			return 1;
 		}
-
-		int sequencial = 1;
-		if (!relacionados.isEmpty()) {
-			Collections.sort(relacionados, new ComparadorSinistroSequencial());
-			int ultimo = relacionados.get(relacionados.size() - 1).getSequencial();
-			sequencial = ultimo + 1;
-		}
-
-		String sequencialFormatado = String.format("%03d", sequencial);
-		String numeroSinistro = "S" + apoliceEncontrada.getNumero() + sequencialFormatado;
-
-		Sinistro novoSinistro = new Sinistro(
-				numeroSinistro,
-				veiculo,
-				dados.getDataHoraSinistro(),
-				dataHoraAtual,
-				dados.getUsuarioRegistro(),
-				BigDecimal.valueOf(dados.getValorSinistro()),
-				tipo
-		);
-
-		novoSinistro.setSequencial(sequencial);
-		novoSinistro.setNumeroApolice(apoliceEncontrada.getNumero());
-
-		daoSinistro.incluir(novoSinistro);
-
-		return numeroSinistro;
 	}
 }
